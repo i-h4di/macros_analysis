@@ -5,9 +5,10 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  // Direct (non-pooled) connection used for migrations. On Neon/Vercel set this
-  // to the "unpooled" connection string. Falls back to DATABASE_URL locally.
-  directUrl = env("DIRECT_URL")
+  // Direct (non-pooled) connection used for migrations. The Neon–Vercel
+  // integration auto-provisions DATABASE_URL_UNPOOLED, so no manual env var is
+  // needed. Locally, set DATABASE_URL_UNPOOLED to the same value as DATABASE_URL.
+  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 model Meal {

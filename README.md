@@ -83,16 +83,14 @@ prisma/schema.prisma  # Meal model (Postgres)
 2. Go to [vercel.com](https://vercel.com) → **Add New → Project** → import
    `macros_analysis`.
 3. **Create the database:** in the Vercel project, open **Storage → Create
-   Database → Postgres** (Neon). Vercel auto-adds `DATABASE_URL` and the
-   unpooled URL to the project's env vars.
-4. **Map the direct URL:** add an env var `DIRECT_URL` set to the **unpooled**
-   connection string Vercel created (e.g. the `..._URL_NON_POOLING` /
-   `DATABASE_URL_UNPOOLED` value). Migrations use it.
-5. **Add the AI key:** env vars `LLM_PROVIDER=gemini` and
-   `LLM_API_KEY=<your Gemini key>` (free key from
+   Database → Postgres** (Neon). The integration auto-adds both `DATABASE_URL`
+   (pooled) and `DATABASE_URL_UNPOOLED` (direct) — no manual DB env vars needed.
+4. **Add the AI key:** env vars `LLM_PROVIDER` (`gemini`, `deepseek`, or
+   `openai`) and `LLM_API_KEY=<your key>` (free Gemini key from
    https://aistudio.google.com/apikey).
-6. **Deploy.** The build runs `prisma migrate deploy` to create the table, then
-   builds Next.js. Your app is live at `https://<project>.vercel.app`.
+5. **Deploy.** The build runs `prisma migrate deploy` (using
+   `DATABASE_URL_UNPOOLED`) to create the table, then builds Next.js. Your app is
+   live at `https://<project>.vercel.app`.
 
 Every push to the branch redeploys automatically.
 
