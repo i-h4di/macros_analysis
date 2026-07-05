@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DailyLogResponse } from "@/lib/types";
 import { DAILY_CALORIE_GOAL, DAILY_MACRO_GOALS } from "@/lib/constants";
+import { getDailyGoal } from "@/lib/goal";
 import { CalorieRing } from "./CalorieRing";
 import { MacroBar } from "./MacroBar";
 import { MealCard } from "./MealCard";
@@ -35,6 +36,9 @@ export function DailyLog() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [goal, setGoal] = useState(DAILY_CALORIE_GOAL);
+
+  useEffect(() => setGoal(getDailyGoal()), []);
 
   const load = useCallback(async (date: string) => {
     setLoading(true);
@@ -119,13 +123,13 @@ export function DailyLog() {
               <h3 className="font-display-lg text-[32px] text-on-surface">
                 {totals?.calories ?? 0}{" "}
                 <span className="text-body-md font-normal text-on-surface-variant">
-                  / {DAILY_CALORIE_GOAL} kcal
+                  / {goal} kcal
                 </span>
               </h3>
             </div>
             <CalorieRing
               value={totals?.calories ?? 0}
-              goal={DAILY_CALORIE_GOAL}
+              goal={goal}
               size={72}
               stroke={6}
               label="Kcal"

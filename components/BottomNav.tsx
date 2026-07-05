@@ -12,6 +12,8 @@ interface NavItem {
 const ITEMS: NavItem[] = [
   { href: "/", label: "Scan", icon: "photo_camera" },
   { href: "/log", label: "Stats", icon: "insights" },
+  { href: "/calculator", label: "Calculator", icon: "calculate" },
+  { href: "/profile", label: "Profile", icon: "person" },
 ];
 
 export function BottomNav() {
@@ -27,7 +29,7 @@ export function BottomNav() {
             href={item.href}
             className={
               active
-                ? "flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-6 py-2 transition-transform active:scale-95"
+                ? "flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1.5 transition-transform active:scale-95"
                 : "flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-colors"
             }
           >
@@ -36,7 +38,7 @@ export function BottomNav() {
             >
               {item.icon}
             </span>
-            <span className="font-label-sm mt-1">{item.label}</span>
+            <span className="font-label-sm mt-1 text-[10px]">{item.label}</span>
           </Link>
         );
       })}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { MealAnalysis } from "@/lib/types";
 import {
@@ -10,6 +10,7 @@ import {
   MEAL_TYPE_LABELS,
   type MealType,
 } from "@/lib/constants";
+import { getDailyGoal } from "@/lib/goal";
 import { CalorieRing } from "./CalorieRing";
 import { MacroBar } from "./MacroBar";
 
@@ -22,6 +23,9 @@ export function MealAnalyzer() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [analysis, setAnalysis] = useState<MealAnalysis | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [goal, setGoal] = useState(DAILY_CALORIE_GOAL);
+
+  useEffect(() => setGoal(getDailyGoal()), []);
 
   async function handleAnalyze() {
     if (!description.trim() || phase === "analyzing") return;
@@ -192,10 +196,9 @@ export function MealAnalyzer() {
 
           {/* Calories */}
           <div className="col-span-1 bg-surface-container-high rounded-xl p-6 flex flex-col items-center justify-center text-center">
-            <CalorieRing value={analysis.calories} goal={DAILY_CALORIE_GOAL} />
+            <CalorieRing value={analysis.calories} goal={goal} />
             <p className="font-label-sm mt-4 text-on-surface-variant">
-              Daily Total:{" "}
-              {Math.round((analysis.calories / DAILY_CALORIE_GOAL) * 100)}%
+              Daily Total: {Math.round((analysis.calories / goal) * 100)}%
             </p>
           </div>
 
