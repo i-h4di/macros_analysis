@@ -135,7 +135,7 @@ export function MealAnalyzer() {
           {phase === "analyzing" && (
             <div className="absolute inset-0 bg-primary/10 backdrop-blur-sm flex items-center justify-center">
               <div className="absolute inset-0 overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-1 bg-primary shadow-[0_0_15px_#6bfb9a] animate-scan" />
+                <div className="absolute top-0 left-0 w-full h-1 bg-primary shadow-[0_0_15px_#f6c453] animate-scan" />
               </div>
               <p className="font-label-sm text-primary animate-pulse uppercase relative z-10">
                 Estimating nutrition…
