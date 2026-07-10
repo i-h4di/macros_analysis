@@ -2,22 +2,24 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useT, type TKey } from "@/lib/i18n";
 
 interface NavItem {
   href: string;
-  label: string;
+  labelKey: TKey;
   icon: string;
 }
 
 const ITEMS: NavItem[] = [
-  { href: "/", label: "Scan", icon: "photo_camera" },
-  { href: "/log", label: "Stats", icon: "insights" },
-  { href: "/calculator", label: "Calculator", icon: "calculate" },
-  { href: "/profile", label: "Profile", icon: "person" },
+  { href: "/", labelKey: "nav.scan", icon: "photo_camera" },
+  { href: "/log", labelKey: "nav.stats", icon: "insights" },
+  { href: "/calculator", labelKey: "nav.calculator", icon: "calculate" },
+  { href: "/profile", labelKey: "nav.profile", icon: "person" },
 ];
 
 export function BottomNav() {
   const pathname = usePathname();
+  const { t } = useT();
 
   return (
     <nav className="fixed bottom-0 left-0 w-full flex justify-around items-center px-margin-mobile py-4 bg-surface-container-low border-t border-outline-variant/20 z-50">
@@ -38,7 +40,9 @@ export function BottomNav() {
             >
               {item.icon}
             </span>
-            <span className="font-label-sm mt-1 text-[10px]">{item.label}</span>
+            <span className="font-label-sm mt-1 text-[10px]">
+              {t(item.labelKey)}
+            </span>
           </Link>
         );
       })}

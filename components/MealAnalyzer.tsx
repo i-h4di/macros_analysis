@@ -7,25 +7,43 @@ import {
   DAILY_CALORIE_GOAL,
   DAILY_MACRO_GOALS,
   MEAL_TYPES,
-  MEAL_TYPE_LABELS,
   type MealType,
 } from "@/lib/constants";
 import { getDailyGoal } from "@/lib/goal";
+import { useT } from "@/lib/i18n";
 import { CalorieRing } from "./CalorieRing";
 import { MacroBar } from "./MacroBar";
 
 type Phase = "idle" | "analyzing" | "result" | "saving";
 
+const PORTIONS = [0.5, 1, 1.5, 2] as const;
+
+function scale(a: MealAnalysis, factor: number): MealAnalysis {
+  return {
+    ...a,
+    calories: Math.round(a.calories * factor),
+    protein: Math.round(a.protein * factor * 10) / 10,
+    carbs: Math.round(a.carbs * factor * 10) / 10,
+    fat: Math.round(a.fat * factor * 10) / 10,
+    fiber: Math.round(a.fiber * factor * 10) / 10,
+  };
+}
+
 export function MealAnalyzer() {
   const router = useRouter();
+  const { t, lang } = useT();
   const [description, setDescription] = useState("");
   const [mealType, setMealType] = useState<MealType>("lunch");
   const [phase, setPhase] = useState<Phase>("idle");
   const [analysis, setAnalysis] = useState<MealAnalysis | null>(null);
+  const [portion, setPortion] = useState<number>(1);
+  const [mealName, setMealName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [goal, setGoal] = useState(DAILY_CALORIE_GOAL);
 
   useEffect(() => setGoal(getDailyGoal()), []);
+
+  const scaled = analysis ? scale(analysis, portion) : null;
 
   async function handleAnalyze() {
     if (!description.trim() || phase === "analyzing") return;
@@ -35,22 +53,25 @@ export function MealAnalyzer() {
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description, mealType }),
+        body: JSON.stringify({ description, mealType, lang }),
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error ?? "Analysis failed.");
+        throw new Error(data.error ?? t("scan.errorGeneric"));
       }
-      setAnalysis(data as MealAnalysis);
+      const a = data as MealAnalysis;
+      setAnalysis(a);
+      setMealName(a.mealName);
+      setPortion(1);
       setPhase("result");
     } catch (err) {
-      setError((err as Error).message);
+      setError((err as Error).message || t("scan.errorGeneric"));
       setPhase("idle");
     }
   }
 
   async function handleSave() {
-    if (!analysis) return;
+    if (!scaled) return;
     setError(null);
     setPhase("saving");
     try {
@@ -58,7 +79,8 @@ export function MealAnalyzer() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...analysis,
+          ...scaled,
+          mealName: mealName.trim() || scaled.mealName,
           description,
           mealType,
           loggedAt: new Date().toISOString(),
@@ -66,11 +88,15 @@ export function MealAnalyzer() {
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error ?? "Could not save meal.");
+        throw new Error(data.error ?? t("scan.errorGeneric"));
       }
+      // Flag for the log page to show a success toast after navigation.
+      try {
+        sessionStorage.setItem("saarati.toast", "saved");
+      } catch {}
       router.push("/log");
     } catch (err) {
-      setError((err as Error).message);
+      setError((err as Error).message || t("scan.errorGeneric"));
       setPhase("result");
     }
   }
@@ -78,6 +104,8 @@ export function MealAnalyzer() {
   function handleClear() {
     setAnalysis(null);
     setDescription("");
+    setMealName("");
+    setPortion(1);
     setError(null);
     setPhase("idle");
   }
@@ -95,10 +123,10 @@ export function MealAnalyzer() {
             </div>
             <div className="px-2">
               <h2 className="font-headline-lg text-[20px] text-on-surface">
-                Analyze Your Meal
+                {t("scan.title")}
               </h2>
               <p className="font-body-md text-[14px] text-on-surface-variant mt-1">
-                Describe what you ate and get instant AI nutrition facts
+                {t("scan.subtitle")}
               </p>
             </div>
           </div>
@@ -106,7 +134,7 @@ export function MealAnalyzer() {
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="e.g. grilled chicken shawarma with garlic sauce  •  شاورما دجاج مع ثومية"
+            placeholder={t("scan.placeholder")}
             rows={3}
             dir="auto"
             disabled={phase === "analyzing"}
@@ -126,7 +154,7 @@ export function MealAnalyzer() {
                     : "px-4 py-1.5 rounded-full font-body-md text-[13px] bg-surface-container-highest text-on-surface-variant hover:bg-outline-variant/30 transition-all"
                 }
               >
-                {MEAL_TYPE_LABELS[type]}
+                {t(`mealType.${type}`)}
               </button>
             ))}
           </div>
@@ -138,14 +166,17 @@ export function MealAnalyzer() {
                 <div className="absolute top-0 left-0 w-full h-1 bg-primary shadow-[0_0_15px_#f6c453] animate-scan" />
               </div>
               <p className="font-label-sm text-primary animate-pulse uppercase relative z-10">
-                Estimating nutrition…
+                {t("scan.scanning")}
               </p>
             </div>
           )}
         </div>
 
         {error && (
-          <div className="bg-error-container/20 border border-error/30 text-error rounded-lg px-4 py-3 font-body-md text-[14px]">
+          <div
+            dir="auto"
+            className="bg-error-container/20 border border-error/30 text-error rounded-lg px-4 py-3 font-body-md text-[14px]"
+          >
             {error}
           </div>
         )}
@@ -157,29 +188,38 @@ export function MealAnalyzer() {
             className="w-full h-14 bg-primary text-on-primary font-headline-lg text-[16px] rounded-xl flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform disabled:opacity-40 disabled:active:scale-100"
           >
             <span className="material-symbols-outlined">auto_awesome</span>
-            {phase === "analyzing" ? "ANALYZING…" : "ANALYZE MEAL"}
+            {phase === "analyzing" ? t("scan.analyzing") : t("scan.analyze")}
           </button>
         )}
       </section>
 
       {/* Results */}
-      {analysis && (phase === "result" || phase === "saving") && (
+      {scaled && (phase === "result" || phase === "saving") && (
         <section className="grid grid-cols-2 gap-4">
-          {/* Detected items */}
+          {/* Meal name + detected items */}
           <div className="col-span-2 bg-surface-container-high rounded-xl p-6">
             <div className="flex items-center gap-3 mb-4">
               <span className="material-symbols-outlined text-primary">
                 restaurant
               </span>
-              <h3 className="font-headline-lg text-[18px]">{analysis.mealName}</h3>
+              <label className="sr-only">{t("scan.mealName")}</label>
+              <input
+                dir="auto"
+                value={mealName}
+                onChange={(e) => setMealName(e.target.value)}
+                className="flex-grow bg-transparent font-headline-lg text-[18px] text-on-surface border-b border-transparent focus:border-primary outline-none transition-colors min-w-0"
+              />
+              <span className="material-symbols-outlined text-on-surface-variant text-[18px]">
+                edit
+              </span>
             </div>
             <div className="flex flex-wrap gap-2">
-              {analysis.items.length === 0 && (
+              {scaled.items.length === 0 && (
                 <span className="text-on-surface-variant font-body-md text-[14px]">
-                  No individual items detected.
+                  {t("scan.noItems")}
                 </span>
               )}
-              {analysis.items.map((item, i) => (
+              {scaled.items.map((item, i) => (
                 <span
                   key={i}
                   dir="auto"
@@ -192,55 +232,84 @@ export function MealAnalyzer() {
                 </span>
               ))}
             </div>
+
+            {/* Portion multiplier */}
+            <div className="mt-5">
+              <p className="font-label-sm text-on-surface-variant uppercase tracking-widest mb-2">
+                {t("scan.portion")}
+              </p>
+              <div className="flex gap-2">
+                {PORTIONS.map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPortion(p)}
+                    disabled={phase === "saving"}
+                    className={
+                      portion === p
+                        ? "flex-1 py-2 rounded-full bg-primary text-on-primary font-body-md text-[14px] font-semibold transition-all active:scale-95"
+                        : "flex-1 py-2 rounded-full bg-surface-container-highest text-on-surface-variant font-body-md text-[14px] hover:bg-outline-variant/30 transition-all"
+                    }
+                  >
+                    ×{p === 0.5 ? "½" : p === 1.5 ? "1½" : p}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Calories */}
           <div className="col-span-1 bg-surface-container-high rounded-xl p-6 flex flex-col items-center justify-center text-center">
-            <CalorieRing value={analysis.calories} goal={goal} />
+            <CalorieRing
+              value={scaled.calories}
+              goal={goal}
+              label={t("common.kcalUnit")}
+            />
             <p className="font-label-sm mt-4 text-on-surface-variant">
-              Daily Total: {Math.round((analysis.calories / goal) * 100)}%
+              {Math.round((scaled.calories / goal) * 100)}% {t("scan.dailyTotal")}
             </p>
           </div>
 
           {/* Macros */}
           <div className="col-span-1 bg-surface-container-high rounded-xl p-6 space-y-4">
             <h4 className="font-label-sm text-on-surface-variant uppercase tracking-widest">
-              Macros
+              {t("scan.macros")}
             </h4>
             <MacroBar
-              label="Protein"
-              grams={analysis.protein}
+              label={t("scan.protein")}
+              grams={scaled.protein}
               goal={DAILY_MACRO_GOALS.protein}
               color="bg-primary"
             />
             <MacroBar
-              label="Carbs"
-              grams={analysis.carbs}
+              label={t("scan.carbs")}
+              grams={scaled.carbs}
               goal={DAILY_MACRO_GOALS.carbs}
               color="bg-secondary"
             />
             <MacroBar
-              label="Fats"
-              grams={analysis.fat}
+              label={t("scan.fats")}
+              grams={scaled.fat}
               goal={DAILY_MACRO_GOALS.fat}
               color="bg-tertiary-container"
             />
           </div>
 
           {/* AI insight */}
-          {analysis.insight && (
+          {scaled.insight && (
             <div className="col-span-2 bg-primary/10 rounded-xl p-6 border border-primary/20">
               <div className="flex items-start gap-3">
                 <span className="material-symbols-outlined text-primary fill-icon">
                   auto_awesome
                 </span>
                 <div>
-                  <h4 className="font-label-sm text-primary">AI HEALTH INSIGHT</h4>
+                  <h4 className="font-label-sm text-primary uppercase">
+                    {t("scan.insight")}
+                  </h4>
                   <p
                     dir="auto"
                     className="font-body-md text-[14px] text-on-surface mt-1"
                   >
-                    {analysis.insight}
+                    {scaled.insight}
                   </p>
                 </div>
               </div>
@@ -255,14 +324,14 @@ export function MealAnalyzer() {
               className="w-full h-14 bg-primary text-on-primary font-headline-lg text-[16px] rounded-xl flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform disabled:opacity-50"
             >
               <span className="material-symbols-outlined">save</span>
-              {phase === "saving" ? "SAVING…" : "SAVE TO DAILY LOG"}
+              {phase === "saving" ? t("scan.saving") : t("scan.save")}
             </button>
             <button
               onClick={handleClear}
               disabled={phase === "saving"}
               className="w-full h-14 bg-transparent text-secondary font-headline-lg text-[16px] rounded-xl border border-outline-variant flex items-center justify-center gap-2 active:opacity-70 transition-opacity"
             >
-              ANALYZE ANOTHER
+              {t("scan.another")}
             </button>
           </div>
         </section>

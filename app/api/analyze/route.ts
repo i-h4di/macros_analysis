@@ -6,7 +6,7 @@ import { MEAL_TYPES, type MealType } from "@/lib/constants";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  let payload: { description?: unknown; mealType?: unknown };
+  let payload: { description?: unknown; mealType?: unknown; lang?: unknown };
   try {
     payload = await request.json();
   } catch {
@@ -18,6 +18,7 @@ export async function POST(request: Request) {
   const mealType = (
     typeof payload.mealType === "string" ? payload.mealType : "lunch"
   ) as MealType;
+  const lang = payload.lang === "ar" ? "ar" : "en";
 
   if (!description.trim()) {
     return NextResponse.json(
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const analysis = await analyzeMeal(description, mealType);
+    const analysis = await analyzeMeal(description, mealType, lang);
     return NextResponse.json(analysis);
   } catch (err) {
     if (err instanceof LLMConfigError) {

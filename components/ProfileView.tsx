@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { DayStat } from "@/app/api/stats/weekly/route";
 import { getDailyGoal } from "@/lib/goal";
+import { useT, type Lang } from "@/lib/i18n";
 import { WeeklyChart } from "./WeeklyChart";
 
 interface Profile {
@@ -11,18 +12,16 @@ interface Profile {
   units: "metric" | "imperial";
   healthKit: boolean;
   reminders: boolean;
-  language: "ar" | "en";
 }
 
 const PROFILE_KEY = "saarati.profile";
 
 const DEFAULT_PROFILE: Profile = {
-  name: "Your Name",
+  name: "",
   targetWeight: "75",
   units: "metric",
   healthKit: true,
   reminders: false,
-  language: "en",
 };
 
 function loadProfile(): Profile {
@@ -37,11 +36,12 @@ function loadProfile(): Profile {
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
+  if (parts.length === 0) return "🍽";
   return (parts[0][0] + (parts[1]?.[0] ?? "")).toUpperCase();
 }
 
 export function ProfileView() {
+  const { t, lang, setLang } = useT();
   const [profile, setProfile] = useState<Profile>(DEFAULT_PROFILE);
   const [goal, setGoal] = useState(2100);
   const [days, setDays] = useState<DayStat[]>([]);
@@ -90,15 +90,18 @@ export function ProfileView() {
             {initials(profile.name)}
           </span>
         </div>
-        <h2 className="font-headline-md text-headline-md text-on-surface" dir="auto">
-          {profile.name || "Your Name"}
+        <h2
+          className="font-headline-md text-headline-md text-on-surface"
+          dir="auto"
+        >
+          {profile.name || t("profile.defaultName")}
         </h2>
         <div className="flex items-center gap-2 mt-1">
           <span className="bg-secondary-container text-on-secondary-container px-3 py-0.5 rounded-full font-label-bold text-label-bold">
-            Weight Loss
+            {t("profile.badge")}
           </span>
           <span className="text-on-surface-variant font-body-sm text-[13px]">
-            • Goal {goal} kcal/day
+            • {goal.toLocaleString()} {t("profile.goalPerDay")}
           </span>
         </div>
       </section>
@@ -108,18 +111,19 @@ export function ProfileView() {
         <div className="flex justify-between items-end">
           <div>
             <h3 className="font-headline-sm text-headline-sm text-on-surface">
-              Weekly Caloric Intake
+              {t("profile.weekly.title")}
             </h3>
             <p className="text-on-surface-variant font-body-sm text-[13px]">
-              Last 7 days vs. goal ({goal} kcal)
+              {t("profile.weekly.subtitle")} ({goal.toLocaleString()}{" "}
+              {t("log.kcal")})
             </p>
           </div>
-          <div className="text-right">
+          <div className="text-end">
             <span className="text-primary font-display-lg-mobile text-[28px] block leading-none">
               {avgKcal.toLocaleString()}
             </span>
-            <span className="text-on-surface-variant font-label-bold text-label-bold">
-              AVG KCAL
+            <span className="text-on-surface-variant font-label-bold text-label-bold uppercase">
+              {t("profile.weekly.avg")}
             </span>
           </div>
         </div>
@@ -127,7 +131,7 @@ export function ProfileView() {
           <WeeklyChart days={days} goal={goal} />
         ) : (
           <p className="text-on-surface-variant font-body-md text-[14px] py-8 text-center">
-            Log some meals to see your weekly trend.
+            {t("profile.weekly.empty")}
           </p>
         )}
       </section>
@@ -135,25 +139,27 @@ export function ProfileView() {
       {/* Personal information */}
       <section className="space-y-4">
         <h3 className="font-headline-sm text-headline-sm text-on-surface px-2">
-          Personal Information
+          {t("profile.info")}
         </h3>
         <div className="bg-surface-container rounded-xl p-6 border border-outline-variant/40 space-y-lg">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="font-label-bold text-label-bold text-on-surface-variant block">
-                Full Name
+                {t("profile.fullName")}
               </label>
               <input
                 className={inputCls}
                 type="text"
                 dir="auto"
                 value={profile.name}
+                placeholder={t("profile.defaultName")}
                 onChange={(e) => update("name", e.target.value)}
               />
             </div>
             <div className="space-y-2">
               <label className="font-label-bold text-label-bold text-on-surface-variant block">
-                Target Weight ({profile.units === "metric" ? "kg" : "lb"})
+                {t("profile.targetWeight")} (
+                {profile.units === "metric" ? "kg" : "lb"})
               </label>
               <input
                 className={inputCls}
@@ -167,13 +173,13 @@ export function ProfileView() {
           {/* Units */}
           <div className="space-y-3">
             <label className="font-label-bold text-label-bold text-on-surface-variant block">
-              Unit Preferences
+              {t("profile.units")}
             </label>
             <div className="flex flex-wrap gap-2">
               {(
                 [
-                  ["metric", "Metric (kg/cm)"],
-                  ["imperial", "Imperial (lb/in)"],
+                  ["metric", t("profile.metric")],
+                  ["imperial", t("profile.imperial")],
                 ] as const
               ).map(([val, label]) => (
                 <button
@@ -195,24 +201,24 @@ export function ProfileView() {
           <div className="space-y-1 pt-1">
             <ToggleRow
               icon="sync"
-              label="Sync with Health Kit"
+              label={t("profile.healthKit")}
               on={profile.healthKit}
               onToggle={() => update("healthKit", !profile.healthKit)}
             />
             <ToggleRow
               icon="notifications_active"
-              label="Meal Reminders"
+              label={t("profile.reminders")}
               on={profile.reminders}
               onToggle={() => update("reminders", !profile.reminders)}
             />
-            {/* Language */}
+            {/* Language — switches the whole app */}
             <div className="flex justify-between items-center py-3 border-b border-outline-variant/30">
               <div className="flex items-center gap-3">
                 <span className="material-symbols-outlined text-secondary">
                   language
                 </span>
                 <span className="font-body-md text-[15px] text-on-surface">
-                  Language (اللغة)
+                  {t("profile.language")}
                 </span>
               </div>
               <div className="flex gap-2">
@@ -220,13 +226,13 @@ export function ProfileView() {
                   [
                     ["ar", "العربية"],
                     ["en", "English"],
-                  ] as const
+                  ] as [Lang, string][]
                 ).map(([val, label]) => (
                   <button
                     key={val}
-                    onClick={() => update("language", val)}
+                    onClick={() => setLang(val)}
                     className={
-                      profile.language === val
+                      lang === val
                         ? "bg-primary text-on-primary px-3 py-1 rounded-full font-label-bold text-label-bold"
                         : "bg-surface-container-highest text-on-surface-variant px-3 py-1 rounded-full font-label-bold text-label-bold hover:bg-outline-variant/30 transition-all"
                     }
@@ -240,7 +246,7 @@ export function ProfileView() {
         </div>
       </section>
 
-      {/* Sign out (clears local prefs) */}
+      {/* Reset local prefs */}
       <section>
         <button
           onClick={() => {
@@ -251,7 +257,7 @@ export function ProfileView() {
           className="w-full flex items-center justify-center gap-2 border border-error text-error font-label-bold text-label-bold py-4 rounded-lg hover:bg-error-container/10 transition-all active:scale-[0.98]"
         >
           <span className="material-symbols-outlined">logout</span>
-          Reset Profile
+          {t("profile.reset")}
         </button>
       </section>
     </div>
@@ -284,7 +290,7 @@ function ToggleRow({
       >
         <span
           className={`absolute top-1 w-4 h-4 rounded-full transition-all ${
-            on ? "right-1 bg-on-primary" : "left-1 bg-surface-variant"
+            on ? "end-1 bg-on-primary" : "start-1 bg-surface-variant"
           }`}
         />
       </button>

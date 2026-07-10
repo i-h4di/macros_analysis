@@ -1,8 +1,7 @@
 "use client";
 
 import type { DayStat } from "@/app/api/stats/weekly/route";
-
-const WEEKDAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+import { useT } from "@/lib/i18n";
 
 interface WeeklyChartProps {
   days: DayStat[];
@@ -11,6 +10,7 @@ interface WeeklyChartProps {
 
 // Bar chart of the last 7 days' calories, scaled to the goal, today highlighted.
 export function WeeklyChart({ days, goal }: WeeklyChartProps) {
+  const { weekdays } = useT();
   // Scale bars to the larger of the goal or the week's peak so overshoots show.
   const peak = Math.max(goal, ...days.map((d) => d.calories), 1);
   const todayIdx = days.length - 1;
@@ -21,7 +21,7 @@ export function WeeklyChart({ days, goal }: WeeklyChartProps) {
         const pct = Math.max((d.calories / peak) * 100, 3);
         const isToday = i === todayIdx;
         const over = d.calories > goal;
-        const dow = WEEKDAYS[new Date(`${d.date}T00:00:00`).getDay()];
+        const dow = weekdays[new Date(`${d.date}T00:00:00`).getDay()];
         const fill = over
           ? "bg-error-container/80"
           : isToday

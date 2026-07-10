@@ -26,17 +26,19 @@ Rules:
 export async function analyzeMeal(
   description: string,
   mealType: MealType,
+  lang: "ar" | "en" = "en",
 ): Promise<MealAnalysis> {
   const trimmed = description.trim();
   if (!trimmed) {
     throw new LLMRequestError("Please describe what you ate.");
   }
 
+  const langName = lang === "ar" ? "Arabic" : "English";
   const messages: ChatMessage[] = [
     { role: "system", content: SYSTEM_PROMPT },
     {
       role: "user",
-      content: `Meal type: ${MEAL_TYPE_LABELS[mealType]}\nDescription: ${trimmed}`,
+      content: `Meal type: ${MEAL_TYPE_LABELS[mealType]}\nUI language: ${langName} — write mealName, items, and insight in ${langName}.\nDescription: ${trimmed}`,
     },
   ];
 

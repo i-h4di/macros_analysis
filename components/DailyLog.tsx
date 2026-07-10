@@ -4,9 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DailyLogResponse } from "@/lib/types";
 import { DAILY_CALORIE_GOAL, DAILY_MACRO_GOALS } from "@/lib/constants";
 import { getDailyGoal } from "@/lib/goal";
+import { useT } from "@/lib/i18n";
 import { CalorieRing } from "./CalorieRing";
 import { MacroBar } from "./MacroBar";
-import { MealCard } from "./MealCard";
+import { MealCard, type MealEdit } from "./MealCard";
 
 function localDateString(d: Date): string {
   const y = d.getFullYear();
@@ -27,9 +28,8 @@ function recentDays(count: number): Date[] {
   return days;
 }
 
-const WEEKDAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-
 export function DailyLog() {
+  const { t, weekdays } = useT();
   const days = useMemo(() => recentDays(7), []);
   const [selected, setSelected] = useState(() => localDateString(new Date()));
   const [data, setData] = useState<DailyLogResponse | null>(null);
@@ -37,8 +37,22 @@ export function DailyLog() {
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [goal, setGoal] = useState(DAILY_CALORIE_GOAL);
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => setGoal(getDailyGoal()), []);
+
+  // Show the "meal saved" toast if the analyzer flagged it before navigating.
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem("saarati.toast") === "saved") {
+        sessionStorage.removeItem("saarati.toast");
+        setToast(t("log.savedToast"));
+        const timer = setTimeout(() => setToast(null), 3000);
+        return () => clearTimeout(timer);
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const load = useCallback(async (date: string) => {
     setLoading(true);
@@ -76,15 +90,45 @@ export function DailyLog() {
     }
   }
 
+  async function handleEdit(id: string, values: MealEdit): Promise<boolean> {
+    try {
+      const res = await fetch(`/api/meals/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error ?? "Could not update meal.");
+      }
+      await load(selected);
+      return true;
+    } catch (err) {
+      setError((err as Error).message);
+      return false;
+    }
+  }
+
   const totals = data?.totals;
   const meals = data?.meals ?? [];
 
   return (
     <div className="mt-stack-gap space-y-section-gap pb-8">
+      {/* Success toast */}
+      {toast && (
+        <div className="fixed top-20 inset-x-0 z-50 flex justify-center px-margin-mobile">
+          <div className="bg-primary text-on-primary rounded-full px-6 py-3 font-body-md text-[14px] font-semibold shadow-2xl">
+            {toast}
+          </div>
+        </div>
+      )}
+
       {/* Date strip */}
       <section>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-headline-lg text-headline-lg-mobile">Your Log</h2>
+          <h2 className="font-headline-lg text-headline-lg-mobile">
+            {t("log.title")}
+          </h2>
         </div>
         <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2">
           {days.map((d) => {
@@ -101,7 +145,7 @@ export function DailyLog() {
                 }
               >
                 <span className="font-label-sm text-[10px] uppercase opacity-70">
-                  {WEEKDAYS[d.getDay()]}
+                  {weekdays[d.getDay()]}
                 </span>
                 <span className="font-headline-lg text-[20px]">
                   {d.getDate()}
@@ -118,12 +162,12 @@ export function DailyLog() {
           <div className="flex justify-between items-center mb-6">
             <div>
               <p className="font-label-sm text-label-sm text-on-surface-variant mb-1 uppercase tracking-widest">
-                Daily Energy
+                {t("log.dailyEnergy")}
               </p>
               <h3 className="font-display-lg text-[32px] text-on-surface">
-                {totals?.calories ?? 0}{" "}
+                {(totals?.calories ?? 0).toLocaleString()}{" "}
                 <span className="text-body-md font-normal text-on-surface-variant">
-                  / {goal} kcal
+                  / {goal.toLocaleString()} {t("log.kcal")}
                 </span>
               </h3>
             </div>
@@ -132,24 +176,24 @@ export function DailyLog() {
               goal={goal}
               size={72}
               stroke={6}
-              label="Kcal"
+              label={t("common.kcalUnit")}
             />
           </div>
           <div className="grid grid-cols-1 gap-3">
             <MacroBar
-              label="Protein"
+              label={t("scan.protein")}
               grams={totals?.protein ?? 0}
               goal={DAILY_MACRO_GOALS.protein}
               color="bg-secondary"
             />
             <MacroBar
-              label="Carbs"
+              label={t("scan.carbs")}
               grams={totals?.carbs ?? 0}
               goal={DAILY_MACRO_GOALS.carbs}
               color="bg-tertiary-container"
             />
             <MacroBar
-              label="Fats"
+              label={t("scan.fats")}
               grams={totals?.fat ?? 0}
               goal={DAILY_MACRO_GOALS.fat}
               color="bg-error"
@@ -161,21 +205,38 @@ export function DailyLog() {
       {/* Meal list */}
       <section className="space-y-4">
         <div className="flex items-center justify-between px-1">
-          <h2 className="font-headline-lg text-[20px]">Meals Recorded</h2>
+          <h2 className="font-headline-lg text-[20px]">
+            {t("log.mealsRecorded")}
+          </h2>
           <span className="font-label-sm text-label-sm text-primary">
-            {meals.length} {meals.length === 1 ? "MEAL" : "MEALS"}
+            {meals.length} {meals.length === 1 ? t("log.meal") : t("log.meals")}
           </span>
         </div>
 
         {error && (
-          <div className="bg-error-container/20 border border-error/30 text-error rounded-lg px-4 py-3 font-body-md text-[14px]">
+          <div
+            dir="auto"
+            className="bg-error-container/20 border border-error/30 text-error rounded-lg px-4 py-3 font-body-md text-[14px]"
+          >
             {error}
           </div>
         )}
 
         {loading && (
-          <div className="text-center py-10 text-on-surface-variant font-body-md">
-            Loading…
+          <div className="space-y-4">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="bg-surface-container rounded-xl p-4 flex items-center gap-4 animate-pulse"
+              >
+                <div className="w-12 h-12 rounded-lg bg-surface-container-highest" />
+                <div className="flex-grow space-y-2">
+                  <div className="h-3 w-24 rounded-full bg-surface-container-highest" />
+                  <div className="h-4 w-40 rounded-full bg-surface-container-highest" />
+                </div>
+                <div className="h-6 w-12 rounded bg-surface-container-highest" />
+              </div>
+            ))}
           </div>
         )}
 
@@ -184,21 +245,25 @@ export function DailyLog() {
             <span className="material-symbols-outlined text-primary text-[40px]">
               nutrition
             </span>
-            <p className="font-headline-lg text-[18px] mt-2">No meals yet</p>
+            <p className="font-headline-lg text-[18px] mt-2">
+              {t("log.empty.title")}
+            </p>
             <p className="text-on-surface-variant font-body-md text-[14px] mt-1">
-              Head to Scan to describe and log a meal.
+              {t("log.empty.subtitle")}
             </p>
           </div>
         )}
 
-        {meals.map((meal) => (
-          <MealCard
-            key={meal.id}
-            meal={meal}
-            onDelete={handleDelete}
-            deleting={deletingId === meal.id}
-          />
-        ))}
+        {!loading &&
+          meals.map((meal) => (
+            <MealCard
+              key={meal.id}
+              meal={meal}
+              onDelete={handleDelete}
+              onEdit={handleEdit}
+              deleting={deletingId === meal.id}
+            />
+          ))}
       </section>
     </div>
   );

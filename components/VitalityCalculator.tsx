@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { setDailyGoal } from "@/lib/goal";
+import { useT, type TKey } from "@/lib/i18n";
 import { CalorieRing } from "./CalorieRing";
 import { MacroBar } from "./MacroBar";
 
@@ -15,12 +16,12 @@ interface Result {
   fat: number;
 }
 
-const ACTIVITY = [
-  { value: 1.2, label: "Sedentary (Little or no exercise)" },
-  { value: 1.375, label: "Light (Exercise 1-3 days/week)" },
-  { value: 1.55, label: "Moderate (Exercise 3-5 days/week)" },
-  { value: 1.725, label: "Active (Exercise 6-7 days/week)" },
-  { value: 1.9, label: "Very Active (Hard exercise / physical job)" },
+const ACTIVITY: { value: number; labelKey: TKey }[] = [
+  { value: 1.2, labelKey: "calc.activity.sedentary" },
+  { value: 1.375, labelKey: "calc.activity.light" },
+  { value: 1.55, labelKey: "calc.activity.moderate" },
+  { value: 1.725, labelKey: "calc.activity.active" },
+  { value: 1.9, labelKey: "calc.activity.veryActive" },
 ];
 
 // Mifflin–St Jeor + a 30/40/30 (protein/carbs/fat) calorie split.
@@ -44,6 +45,7 @@ function calculate(
 }
 
 export function VitalityCalculator() {
+  const { t } = useT();
   const [weight, setWeight] = useState("");
   const [height, setHeight] = useState("");
   const [age, setAge] = useState("");
@@ -58,7 +60,7 @@ export function VitalityCalculator() {
     const h = Number(height);
     const a = Number(age);
     if (!(w > 0) || !(h > 0) || !(a > 0)) {
-      setError("Please enter valid weight, height, and age.");
+      setError(t("calc.error"));
       setResult(null);
       return;
     }
@@ -81,11 +83,10 @@ export function VitalityCalculator() {
       {/* Hero intro */}
       <section>
         <h2 className="font-headline-lg text-headline-lg-mobile text-on-surface mb-2">
-          Vitality Calculator
+          {t("calc.title")}
         </h2>
         <p className="text-on-surface-variant font-body-md text-[14px] max-w-xl">
-          Enter your metrics to unlock your custom daily fuel plan tailored to
-          your body&apos;s specific needs.
+          {t("calc.subtitle")}
         </p>
       </section>
 
@@ -96,13 +97,13 @@ export function VitalityCalculator() {
             monitor_weight
           </span>
           <h3 className="font-headline-lg text-[18px] text-on-surface">
-            Dimensions
+            {t("calc.dimensions")}
           </h3>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block font-label-sm text-label-sm text-on-surface-variant mb-1">
-              Weight (kg)
+              {t("calc.weight")}
             </label>
             <input
               className={inputCls}
@@ -115,7 +116,7 @@ export function VitalityCalculator() {
           </div>
           <div>
             <label className="block font-label-sm text-label-sm text-on-surface-variant mb-1">
-              Height (cm)
+              {t("calc.height")}
             </label>
             <input
               className={inputCls}
@@ -134,13 +135,13 @@ export function VitalityCalculator() {
         <div className="flex items-center gap-2 mb-4">
           <span className="material-symbols-outlined text-primary">person</span>
           <h3 className="font-headline-lg text-[18px] text-on-surface">
-            Profile
+            {t("calc.profile")}
           </h3>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block font-label-sm text-label-sm text-on-surface-variant mb-1">
-              Age (years)
+              {t("calc.age")}
             </label>
             <input
               className={inputCls}
@@ -153,7 +154,7 @@ export function VitalityCalculator() {
           </div>
           <div>
             <label className="block font-label-sm text-label-sm text-on-surface-variant mb-1">
-              Gender
+              {t("calc.gender")}
             </label>
             <div className="flex gap-2">
               {(["male", "female"] as Gender[]).map((g) => (
@@ -167,7 +168,7 @@ export function VitalityCalculator() {
                       : "flex-1 py-2.5 rounded-lg border border-outline-variant bg-surface-container-low text-on-surface-variant capitalize transition-all"
                   }
                 >
-                  {g}
+                  {t(g === "male" ? "calc.male" : "calc.female")}
                 </button>
               ))}
             </div>
@@ -182,22 +183,22 @@ export function VitalityCalculator() {
             directions_run
           </span>
           <h3 className="font-headline-lg text-[18px] text-on-surface">
-            Activity Level
+            {t("calc.activity")}
           </h3>
         </div>
         <div className="relative">
           <select
-            className={`${inputCls} appearance-none pr-10`}
+            className={`${inputCls} appearance-none pe-10`}
             value={activity}
             onChange={(e) => setActivity(Number(e.target.value))}
           >
             {ACTIVITY.map((a) => (
               <option key={a.value} value={a.value}>
-                {a.label}
+                {t(a.labelKey)}
               </option>
             ))}
           </select>
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+          <div className="absolute end-4 top-1/2 -translate-y-1/2 pointer-events-none">
             <span className="material-symbols-outlined text-on-surface-variant">
               expand_more
             </span>
@@ -216,7 +217,7 @@ export function VitalityCalculator() {
         className="w-full h-14 bg-primary text-on-primary font-headline-lg text-[16px] rounded-xl shadow-lg active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
       >
         <span className="material-symbols-outlined">bolt</span>
-        CALCULATE VITALITY
+        {t("calc.calculate")}
       </button>
 
       {/* Results */}
@@ -224,32 +225,36 @@ export function VitalityCalculator() {
         <section className="space-y-4">
           <div className="bg-surface-container-high rounded-xl p-6 flex flex-col items-center text-center border border-primary/10">
             <p className="font-label-sm text-on-surface-variant uppercase tracking-widest mb-4">
-              Your Daily Target
+              {t("calc.target")}
             </p>
-            <CalorieRing value={result.tdee} goal={result.tdee} label="Kcal" />
+            <CalorieRing
+              value={result.tdee}
+              goal={result.tdee}
+              label={t("common.kcalUnit")}
+            />
             <p className="font-body-md text-[13px] text-on-surface-variant mt-4">
-              Maintenance calories · BMR {result.bmr} kcal
+              {t("calc.maintenance")} {result.bmr.toLocaleString()}
             </p>
           </div>
 
           <div className="bg-surface-container-high rounded-xl p-6 space-y-4">
             <h4 className="font-label-sm text-on-surface-variant uppercase tracking-widest">
-              Suggested Macros
+              {t("calc.suggestedMacros")}
             </h4>
             <MacroBar
-              label="Protein"
+              label={t("scan.protein")}
               grams={result.protein}
               goal={result.protein}
               color="bg-primary"
             />
             <MacroBar
-              label="Carbs"
+              label={t("scan.carbs")}
               grams={result.carbs}
               goal={result.carbs}
               color="bg-secondary"
             />
             <MacroBar
-              label="Fats"
+              label={t("scan.fats")}
               grams={result.fat}
               goal={result.fat}
               color="bg-tertiary-container"
@@ -264,7 +269,7 @@ export function VitalityCalculator() {
             <span className="material-symbols-outlined">
               {saved ? "check_circle" : "flag"}
             </span>
-            {saved ? "SAVED AS DAILY GOAL" : "SET AS MY DAILY GOAL"}
+            {saved ? t("calc.savedGoal") : t("calc.setGoal")}
           </button>
         </section>
       )}
